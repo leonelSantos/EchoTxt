@@ -52,13 +52,18 @@ type PageItem =
 
 interface PageData { items: PageItem[] }
 
+export interface TocEntry { text: string; pageIndex: number }
+
+interface PaginateResult { pages: PageData[]; toc: TocEntry[] }
+
 // ── Pagination — Pretext supplies exact line breaks ───────────────────────────
 
-function paginate(paragraphs: EpubParagraph[], dims: Dims): PageData[] {
+function paginate(paragraphs: EpubParagraph[], dims: Dims): PaginateResult {
   const { fontSize, contentWidth, lineHeight, linesPerPage } = dims;
   const font = `${fontSize}px Georgia, serif`;
 
   const pages: PageData[] = [];
+  const toc: TocEntry[] = [];
   let current: PageItem[] = [];
   let used = 0;
 
@@ -69,6 +74,8 @@ function paginate(paragraphs: EpubParagraph[], dims: Dims): PageData[] {
   for (const para of paragraphs) {
     if (para.type === 'heading') {
       if (used + 3 > linesPerPage) flush();
+      // Record TOC entry at the page where this heading will appear
+      toc.push({ text: para.text, pageIndex: pages.length });
       current.push({ kind: 'heading', text: para.text });
       used += 3;
       continue;
@@ -101,7 +108,7 @@ function paginate(paragraphs: EpubParagraph[], dims: Dims): PageData[] {
   }
 
   flush();
-  return pages;
+  return { pages, toc };
 }
 
 // ── BookPage ──────────────────────────────────────────────────────────────────
@@ -154,9 +161,11 @@ interface Props { epub: EpubContent; onClose: () => void }
 
 export function BookReader({ epub, onClose }: Props) {
   const [pages,     setPages]     = useState<PageData[]>([]);
+  const [toc,       setToc]       = useState<TocEntry[]>([]);
   const [computing, setComputing] = useState(true);
   const [spread,    setSpread]    = useState(0);
   const [fontSize,  setFontSize]  = useState(17);
+  const [tocOpen,   setTocOpen]   = useState(false);
 
   // Window dimensions — no setState-in-effect needed
   const windowSize = useSyncExternalStore(subscribeResize, getWindowSize);
@@ -171,7 +180,9 @@ export function BookReader({ epub, onClose }: Props) {
   // All state updates happen inside the async callback — no synchronous setState in the effect body.
   useEffect(() => {
     const id = setTimeout(() => {
-      setPages(paginate(epub.paragraphs, dims));
+      const result = paginate(epub.paragraphs, dims);
+      setPages(result.pages);
+      setToc(result.toc);
       setSpread(0);
       setComputing(false);
     }, 0);
@@ -201,10 +212,23 @@ export function BookReader({ epub, onClose }: Props) {
   const currentSpread = Math.floor(spread / 2) + 1;
   const totalSpreads  = Math.ceil(totalPages / 2);
 
+  const goToChapter = useCallback((pageIndex: number) => {
+    setSpread(pageIndex % 2 === 0 ? pageIndex : pageIndex - 1);
+    setTocOpen(false);
+  }, []);
+
   return (
     <div className="reader-container">
       <div className="reader-toolbar">
         <button className="close-btn" onClick={onClose}>← Library</button>
+        <button
+          className={`toc-btn${tocOpen ? ' toc-btn--active' : ''}`}
+          onClick={() => setTocOpen(o => !o)}
+          title="Table of contents"
+          disabled={computing}
+        >
+          ☰ Contents
+        </button>
         <span className="book-title">{epub.title}</span>
 
         <div className="font-controls">
@@ -235,20 +259,40 @@ export function BookReader({ epub, onClose }: Props) {
       {computing ? (
         <div className="computing">Laying out pages…</div>
       ) : (
-        <>
-          <div className="book-spread">
-            {leftPage  && <BookPage page={leftPage}  pageNum={spread + 1} dims={dims} />}
-            {rightPage && <BookPage page={rightPage} pageNum={spread + 2} dims={dims} />}
+        <div className="reader-body">
+          {tocOpen && (
+            <nav className="toc-sidebar">
+              <div className="toc-header">Contents</div>
+              <ul className="toc-list">
+                {toc.map((entry, i) => (
+                  <li key={i}>
+                    <button
+                      className={`toc-item${entry.pageIndex >= spread && (i + 1 >= toc.length || toc[i + 1].pageIndex > spread) ? ' toc-item--active' : ''}`}
+                      onClick={() => goToChapter(entry.pageIndex)}
+                    >
+                      <span className="toc-item-title">{entry.text}</span>
+                      <span className="toc-item-page">{entry.pageIndex + 1}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+          <div className="reader-content">
+            <div className="book-spread">
+              {leftPage  && <BookPage page={leftPage}  pageNum={spread + 1} dims={dims} />}
+              {rightPage && <BookPage page={rightPage} pageNum={spread + 2} dims={dims} />}
+            </div>
+            <div className="nav-controls">
+              <button className="nav-btn" onClick={prevSpread} disabled={spread === 0}>
+                ← Previous
+              </button>
+              <button className="nav-btn" onClick={nextSpread} disabled={spread >= maxSpread}>
+                Next →
+              </button>
+            </div>
           </div>
-          <div className="nav-controls">
-            <button className="nav-btn" onClick={prevSpread} disabled={spread === 0}>
-              ← Previous
-            </button>
-            <button className="nav-btn" onClick={nextSpread} disabled={spread >= maxSpread}>
-              Next →
-            </button>
-          </div>
-        </>
+        </div>
       )}
     </div>
   );
