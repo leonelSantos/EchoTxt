@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { saveProgress } from './db';
 import { prepareWithSegments, layoutWithLines } from '@chenglou/pretext';
 import type { EpubContent, EpubParagraph } from './epubParser';
 
@@ -157,14 +158,20 @@ function BookPage({ page, pageNum, dims }: PageProps) {
 const MIN_FONT = 13;
 const MAX_FONT = 24;
 
-interface Props { epub: EpubContent; onClose: () => void }
+interface Props {
+  epub: EpubContent;
+  bookId?: string;
+  initialSpread?: number;
+  initialFontSize?: number;
+  onClose: () => void;
+}
 
-export function BookReader({ epub, onClose }: Props) {
+export function BookReader({ epub, bookId, initialSpread = 0, initialFontSize = 17, onClose }: Props) {
   const [pages,     setPages]     = useState<PageData[]>([]);
   const [toc,       setToc]       = useState<TocEntry[]>([]);
   const [computing, setComputing] = useState(true);
-  const [spread,    setSpread]    = useState(0);
-  const [fontSize,  setFontSize]  = useState(17);
+  const [spread,    setSpread]    = useState(initialSpread);
+  const [fontSize,  setFontSize]  = useState(initialFontSize);
   const [tocOpen,   setTocOpen]   = useState(false);
 
   // Window dimensions — no setState-in-effect needed
@@ -177,17 +184,29 @@ export function BookReader({ epub, onClose }: Props) {
   );
 
   // Re-paginate whenever the book or layout dims change.
-  // All state updates happen inside the async callback — no synchronous setState in the effect body.
+  // On re-layout (e.g. font resize) we clamp the current spread rather than
+  // resetting to 0, so the reader stays near the same position.
   useEffect(() => {
     const id = setTimeout(() => {
       const result = paginate(epub.paragraphs, dims);
       setPages(result.pages);
       setToc(result.toc);
-      setSpread(0);
+      setSpread(s => {
+        const newMax = Math.max(0, result.pages.length % 2 === 0
+          ? result.pages.length - 2
+          : result.pages.length - 1);
+        return Math.min(s, newMax);
+      });
       setComputing(false);
     }, 0);
     return () => clearTimeout(id);
   }, [epub, dims]);
+
+  // Persist reading position whenever spread or font size changes
+  useEffect(() => {
+    if (!bookId) return;
+    saveProgress(bookId, spread, fontSize);
+  }, [bookId, spread, fontSize]);
 
   const totalPages = pages.length;
   const maxSpread  = Math.max(0, totalPages % 2 === 0 ? totalPages - 2 : totalPages - 1);

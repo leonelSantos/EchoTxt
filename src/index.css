@@ -7,7 +7,7 @@
 }
 
 body {
-  background: #2a1f16;
+  background: #FADFBB;
   min-height: 100vh;
   font-family: 'Georgia', 'Times New Roman', serif;
   -webkit-font-smoothing: antialiased;
@@ -56,6 +56,29 @@ body {
   display: block;
 }
 
+/* ── ASCII book animation ────────────────────────────────────────────────── */
+
+.book-anim {
+  font-family: 'Courier New', Courier, monospace;
+  color: #2a1f16;
+  background: transparent;
+  border: none;
+  white-space: pre;
+  line-height: 1.4;
+  user-select: none;
+}
+
+.book-anim--large {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.book-anim--small {
+  font-size: 11px;
+  color: #c8b499;
+  line-height: 1.35;
+}
+
 .drop-zone h1 {
   font-size: 30px;
   font-weight: 400;
@@ -91,6 +114,212 @@ body {
   font-size: 13px;
   color: #b53328;
 }
+
+/* ── Bookshelf screen ────────────────────────────────────────────────────── */
+
+.bookshelf-screen {
+  flex: 1;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 48px 120px;
+  transition: background 0.2s;
+}
+
+.bookshelf-screen--dragging {
+  background: #3d2d1e;
+}
+
+.bookshelf-header {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 72px;
+}
+
+.bookshelf-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 400;
+  color: #c8b499;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+}
+
+.add-book-spine {
+  position: relative;
+  width: 58px;
+  height: 200px;
+  border-radius: 2px 3px 3px 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 2px dashed #4a3525;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: border-color 0.18s, transform 0.18s;
+  padding: 0;
+}
+
+.add-book-spine:hover:not(:disabled) {
+  border-color: #7a6040;
+  transform: translateY(-14px);
+}
+
+.add-book-spine:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.add-book-spine-plus {
+  font-size: 22px;
+  color: #6b5240;
+  line-height: 1;
+  transition: color 0.18s;
+}
+
+.add-book-spine-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 10px;
+  color: #6b5240;
+  letter-spacing: 1px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  text-transform: uppercase;
+  transition: color 0.18s;
+}
+
+.add-book-spine:hover:not(:disabled) .add-book-spine-plus,
+.add-book-spine:hover:not(:disabled) .add-book-spine-label {
+  color: #a08060;
+}
+
+.bookshelf-error {
+  width: 100%;
+  max-width: 1100px;
+  margin-bottom: 16px;
+}
+
+/* Shelf container: books + plank */
+.shelf-area {
+  width: 100%;
+  max-width: 1100px;
+}
+
+.shelf-books {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 0 8px 16px;
+}
+
+.shelf-plank {
+  height: 18px;
+  background: linear-gradient(to bottom, #FEC89A 0%, #FFA85D 50%, #EB7347 100%);
+  border-radius: 2px;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ── Book spine cards ─────────────────────────────────────────────────────── */
+
+.book-spine-card {
+  position: relative;
+  width: 58px;
+  height: 200px;
+  border-radius: 2px 3px 3px 2px;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow:
+    inset -5px 0 12px rgba(0, 0, 0, 0.45),
+    inset 2px 0 4px rgba(255, 255, 255, 0.07),
+    3px 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+.book-spine-card:hover {
+  transform: translateY(-14px);
+  box-shadow:
+    inset -5px 0 12px rgba(0, 0, 0, 0.45),
+    inset 2px 0 4px rgba(255, 255, 255, 0.07),
+    0 18px 28px rgba(0, 0, 0, 0.65),
+    0 8px 10px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+
+.book-spine-card--loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Spine text — vertical, reading bottom-to-top (Western standard) */
+.spine-text {
+  position: absolute;
+  inset: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  overflow: hidden;
+  gap: 6px;
+}
+
+.spine-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+  overflow: hidden;
+  line-height: 1.3;
+}
+
+.spine-author {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.48);
+  white-space: nowrap;
+  overflow: hidden;
+  line-height: 1.3;
+  letter-spacing: 0.3px;
+}
+
+/* Delete button — revealed on hover */
+.spine-delete {
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  width: 17px;
+  height: 17px;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 3;
+}
+
+.book-spine-card:hover .spine-delete { opacity: 1; }
+.spine-delete:hover { background: rgba(170, 40, 30, 0.85); }
 
 /* ── Reader shell ─────────────────────────────────────────────────────────── */
 

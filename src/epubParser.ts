@@ -7,6 +7,7 @@ export interface EpubParagraph {
 
 export interface EpubContent {
   title: string;
+  author: string;
   paragraphs: EpubParagraph[];
 }
 
@@ -46,6 +47,11 @@ export async function parseEpub(file: File): Promise<EpubContent> {
     opfDoc.querySelector('title');
   const title = dcTitleEl?.textContent?.trim() || file.name.replace(/\.epub$/i, '');
 
+  const dcCreatorEl =
+    Array.from(opfDoc.getElementsByTagNameNS('http://purl.org/dc/elements/1.1/', 'creator'))[0] ??
+    opfDoc.querySelector('creator');
+  const author = dcCreatorEl?.textContent?.trim() ?? '';
+
   // Build id → href manifest
   const manifest = new Map<string, string>();
   opfDoc.querySelectorAll('manifest item').forEach(el => {
@@ -83,7 +89,7 @@ export async function parseEpub(file: File): Promise<EpubContent> {
     extractContent(doc, paragraphs);
   }
 
-  return { title, paragraphs };
+  return { title, author, paragraphs };
 }
 
 function extractContent(doc: Document, out: EpubParagraph[]): void {
